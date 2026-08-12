@@ -4,6 +4,7 @@ import { getDb } from "@/db/client";
 import { clips, clipStatusEnum, type ClipStatus } from "@/db/schema";
 import { requireSession } from "@/lib/auth/require-session";
 import { ClipCard } from "./ClipCard";
+import { CollectNowButton } from "./CollectNowButton";
 
 export const dynamic = "force-dynamic";
 
@@ -53,11 +54,14 @@ export default async function AdminClipsPage({ searchParams }: PageProps) {
             until you approve it.
           </p>
         </div>
-        <form action="/api/auth/logout" method="POST">
-          <button type="submit" className="link-button">
-            Sign out
-          </button>
-        </form>
+        <div className="review-header-actions">
+          <CollectNowButton />
+          <form action="/api/auth/logout" method="POST">
+            <button type="submit" className="link-button">
+              Sign out
+            </button>
+          </form>
+        </div>
       </header>
 
       <nav className="status-filters">

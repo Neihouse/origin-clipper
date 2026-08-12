@@ -166,6 +166,12 @@ tabs at the top. Approving or rejecting is immediate and does not require a seco
 confirmation step — there is nothing further it triggers (no posting), so this is safe by
 design for v1.
 
+The **Collect now** button at the top of the page runs the same collection logic as the
+Saturday cron job, on demand, from the browser — no `CRON_SECRET` or terminal needed, just
+your existing login session. Useful for an out-of-band pull without waiting for Saturday, or
+for re-running after fixing a Twitch/env issue. It shows a live fetched/shortlisted count (or
+an error) once it finishes.
+
 ## Deployment (Vercel)
 
 1. Push this repo to a **private** GitHub/GitLab/Bitbucket repo and import it in Vercel.

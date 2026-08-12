@@ -5,6 +5,7 @@ import { eq, sql } from "drizzle-orm";
 import { getDb } from "@/db/client";
 import { clips } from "@/db/schema";
 import { requireSession } from "@/lib/auth/require-session";
+import { runWeeklyCollection, type CollectionSummary } from "@/lib/collection/run";
 
 function requireId(formData: FormData): string {
   const id = formData.get("id");
@@ -38,4 +39,28 @@ export async function rejectClip(formData: FormData): Promise<void> {
     .where(eq(clips.id, id));
 
   revalidatePath("/admin/clips");
+}
+
+export type CollectionActionState =
+  | { status: "idle" }
+  | { status: "ok"; summary: CollectionSummary }
+  | { status: "error"; message: string };
+
+export async function runCollectionNow(): Promise<CollectionActionState> {
+  await requireSession();
+
+  try {
+    const summary = await runWeeklyCollection();
+    revalidatePath("/admin/clips");
+    return { status: "ok", summary };
+  } catch (error) {
+    console.error("Manual clip collection failed:", {
+      name: error instanceof Error ? error.name : typeof error,
+      message: error instanceof Error ? error.message : String(error),
+    });
+    return {
+      status: "error",
+      message: "Collection failed. Check the server logs for details.",
+    };
+  }
 }

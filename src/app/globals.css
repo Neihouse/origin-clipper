@@ -150,6 +150,50 @@ button {
   padding: 4px;
 }
 
+.review-header-actions {
+  display: flex;
+  align-items: flex-end;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.collect-now {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+}
+
+.collect-button {
+  padding: 6px 14px;
+  border-radius: 8px;
+  border: 1px solid var(--accent);
+  background: var(--surface);
+  color: var(--accent);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.collect-button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.collect-result {
+  margin: 0;
+  font-size: 12px;
+  max-width: 220px;
+  text-align: right;
+}
+
+.collect-result-ok {
+  color: var(--success);
+}
+
+.collect-result-error {
+  color: var(--danger);
+}
+
 .status-filters {
   display: flex;
   flex-wrap: wrap;

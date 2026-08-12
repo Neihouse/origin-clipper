@@ -11,6 +11,18 @@ import { explainScore, selectTopClips, type RankableClip } from "@/lib/ranking/s
 // weekly collector — only clips still awaiting a decision are re-ranked.
 const ELIGIBLE_STATUSES = ["discovered", "shortlisted"] as const;
 
+// Keeps each upsert statement small so large backfills don't send one
+// giant multi-row INSERT over the pooled connection.
+const INSERT_CHUNK_SIZE = 200;
+
+function chunk<T>(items: T[], size: number): T[][] {
+  const chunks: T[][] = [];
+  for (let i = 0; i < items.length; i += size) {
+    chunks.push(items.slice(i, i + size));
+  }
+  return chunks;
+}
+
 function toNewClipRow(clip: TwitchClip): NewClip {
   const clipCreatedAt = new Date(clip.created_at);
   return {
@@ -58,22 +70,28 @@ export async function runWeeklyCollection(): Promise<CollectionSummary> {
   });
 
   if (twitchClips.length > 0) {
-    const rows = twitchClips.map(toNewClipRow);
-    await db
-      .insert(clips)
-      .values(rows)
-      .onConflictDoUpdate({
-        target: clips.twitchClipId,
-        set: {
-          title: sql`excluded.title`,
-          url: sql`excluded.url`,
-          embedUrl: sql`excluded.embed_url`,
-          thumbnailUrl: sql`excluded.thumbnail_url`,
-          viewCount: sql`excluded.view_count`,
-          durationSeconds: sql`excluded.duration_seconds`,
-          updatedAt: sql`now()`,
-        },
-      });
+    // Twitch's pagination can return the same clip on more than one page
+    // over a long backfill window; ON CONFLICT DO UPDATE can't affect the
+    // same target row twice within one statement, so dedupe first.
+    const uniqueClips = Array.from(new Map(twitchClips.map((c) => [c.id, c])).values());
+    const rows = uniqueClips.map(toNewClipRow);
+    for (const batch of chunk(rows, INSERT_CHUNK_SIZE)) {
+      await db
+        .insert(clips)
+        .values(batch)
+        .onConflictDoUpdate({
+          target: clips.twitchClipId,
+          set: {
+            title: sql`excluded.title`,
+            url: sql`excluded.url`,
+            embedUrl: sql`excluded.embed_url`,
+            thumbnailUrl: sql`excluded.thumbnail_url`,
+            viewCount: sql`excluded.view_count`,
+            durationSeconds: sql`excluded.duration_seconds`,
+            updatedAt: sql`now()`,
+          },
+        });
+    }
   }
 
   const candidates = await db
