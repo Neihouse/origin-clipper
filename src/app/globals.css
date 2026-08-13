@@ -10,6 +10,8 @@
   --danger-bg: #fee2e2;
   --success: #15803d;
   --success-bg: #dcfce7;
+  --pending: #b45309;
+  --pending-bg: #fef3c7;
   --radius: 10px;
 }
 
@@ -26,6 +28,8 @@
     --danger-bg: #3f1d1d;
     --success: #4ade80;
     --success-bg: #14301f;
+    --pending: #fbbf24;
+    --pending-bg: #45350b;
   }
 }
 
@@ -192,6 +196,56 @@ button {
 
 .collect-result-error {
   color: var(--danger);
+}
+
+.publish-now {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+}
+
+.publish-button {
+  padding: 6px 14px;
+  border-radius: 8px;
+  border: 1px solid var(--accent);
+  background: var(--surface);
+  color: var(--accent);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.publish-button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.publish-status {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+}
+
+.publish-result {
+  margin: 0;
+  font-size: 12px;
+}
+
+.publish-result-ok {
+  color: var(--success);
+}
+
+.publish-result-pending {
+  color: var(--pending);
+}
+
+.publish-result-error {
+  color: var(--danger);
+}
+
+.publish-error-detail {
+  color: var(--text-muted);
 }
 
 .status-filters {

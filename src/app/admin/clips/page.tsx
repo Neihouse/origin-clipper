@@ -7,6 +7,7 @@ import { ClipCard } from "./ClipCard";
 import { CollectNowButton } from "./CollectNowButton";
 
 export const dynamic = "force-dynamic";
+export const maxDuration = 120;
 
 const FILTERS: { value: ClipStatus | "all"; label: string }[] = [
   { value: "shortlisted", label: "Shortlisted" },

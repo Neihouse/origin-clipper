@@ -17,6 +17,17 @@ export const clipStatusEnum = pgEnum("clip_status", [
   "published",
 ]);
 
+// Per-platform publish outcome. `clips.status` flips to "published" only once
+// both instagramPublishStatus and facebookPublishStatus reach "published" —
+// a partial failure leaves `status: "approved"` so the clip stays actionable
+// and the Publish button stays enabled for retry.
+export const platformPublishStatusEnum = pgEnum("platform_publish_status", [
+  "not_started",
+  "pending",
+  "published",
+  "failed",
+]);
+
 export const clips = pgTable(
   "clips",
   {
@@ -49,6 +60,35 @@ export const clips = pgTable(
     approvedAt: timestamp("approved_at", { withTimezone: true }),
     publishedAt: timestamp("published_at", { withTimezone: true }),
 
+    // Re-hosted video asset (Vercel Blob). Fetched once via the unofficial
+    // Twitch clip-video path and reused across retries so a failed Meta call
+    // never re-triggers that risky step.
+    videoAssetUrl: text("video_asset_url"),
+    videoAssetFetchedAt: timestamp("video_asset_fetched_at", { withTimezone: true }),
+    videoAssetError: text("video_asset_error"),
+
+    // Instagram Reels publish state
+    instagramPublishStatus: platformPublishStatusEnum("instagram_publish_status")
+      .notNull()
+      .default("not_started"),
+    instagramContainerId: text("instagram_container_id"),
+    instagramMediaId: text("instagram_media_id"),
+    instagramPermalink: text("instagram_permalink"),
+    instagramPublishedAt: timestamp("instagram_published_at", { withTimezone: true }),
+    instagramPublishError: text("instagram_publish_error"),
+
+    // Facebook Page publish state
+    facebookPublishStatus: platformPublishStatusEnum("facebook_publish_status")
+      .notNull()
+      .default("not_started"),
+    facebookPostId: text("facebook_post_id"),
+    facebookPermalink: text("facebook_permalink"),
+    facebookPublishedAt: timestamp("facebook_published_at", { withTimezone: true }),
+    facebookPublishError: text("facebook_publish_error"),
+
+    // Bookkeeping for the last Publish click
+    publishAttemptedAt: timestamp("publish_attempted_at", { withTimezone: true }),
+
     // Record bookkeeping
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
@@ -59,3 +99,4 @@ export const clips = pgTable(
 export type Clip = typeof clips.$inferSelect;
 export type NewClip = typeof clips.$inferInsert;
 export type ClipStatus = (typeof clipStatusEnum.enumValues)[number];
+export type PlatformPublishStatus = (typeof platformPublishStatusEnum.enumValues)[number];

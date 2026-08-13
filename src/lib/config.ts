@@ -53,4 +53,23 @@ export const config = {
       return Number(process.env.TOP_CLIP_LIMIT ?? 5);
     },
   },
+  meta: {
+    get pageId() {
+      return required("META_PAGE_ID");
+    },
+    get igUserId() {
+      return required("META_IG_USER_ID");
+    },
+    get pageAccessToken() {
+      return required("META_PAGE_ACCESS_TOKEN");
+    },
+    get graphApiVersion() {
+      return process.env.META_GRAPH_API_VERSION || "v21.0";
+    },
+  },
+  blob: {
+    get readWriteToken() {
+      return required("BLOB_READ_WRITE_TOKEN");
+    },
+  },
 };

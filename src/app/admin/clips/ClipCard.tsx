@@ -1,6 +1,7 @@
 import { config } from "@/lib/config";
-import type { Clip } from "@/db/schema";
+import type { Clip, PlatformPublishStatus } from "@/db/schema";
 import { approveClip, rejectClip } from "./actions";
+import { PublishButton } from "./PublishButton";
 
 function formatDuration(seconds: number): string {
   return `${Math.round(seconds)}s`;
@@ -10,6 +11,32 @@ function formatScore(clip: Clip): string {
   if (clip.rankingReason) return clip.rankingReason;
   if (clip.rankingScore == null) return "Not yet scored";
   return `Score ${Math.round(clip.rankingScore * 100)}/100`;
+}
+
+function platformStatusLabel(status: PlatformPublishStatus): string {
+  switch (status) {
+    case "published":
+      return "Published";
+    case "pending":
+      return "Pending";
+    case "failed":
+      return "Failed";
+    default:
+      return "Not started";
+  }
+}
+
+function platformStatusClass(status: PlatformPublishStatus): string {
+  switch (status) {
+    case "published":
+      return "publish-result-ok";
+    case "pending":
+      return "publish-result-pending";
+    case "failed":
+      return "publish-result-error";
+    default:
+      return "";
+  }
 }
 
 export function ClipCard({ clip }: { clip: Clip }) {
@@ -63,6 +90,42 @@ export function ClipCard({ clip }: { clip: Clip }) {
           </a>
         </p>
 
+        {clip.instagramPublishStatus !== "not_started" ||
+        clip.facebookPublishStatus !== "not_started" ? (
+          <div className="publish-status">
+            <p className={`publish-result ${platformStatusClass(clip.instagramPublishStatus)}`}>
+              Instagram: {platformStatusLabel(clip.instagramPublishStatus)}
+              {clip.instagramPermalink ? (
+                <>
+                  {" "}
+                  ·{" "}
+                  <a href={clip.instagramPermalink} target="_blank" rel="noreferrer">
+                    view live
+                  </a>
+                </>
+              ) : null}
+              {clip.instagramPublishStatus === "failed" && clip.instagramPublishError ? (
+                <span className="publish-error-detail"> — {clip.instagramPublishError}</span>
+              ) : null}
+            </p>
+            <p className={`publish-result ${platformStatusClass(clip.facebookPublishStatus)}`}>
+              Facebook: {platformStatusLabel(clip.facebookPublishStatus)}
+              {clip.facebookPermalink ? (
+                <>
+                  {" "}
+                  ·{" "}
+                  <a href={clip.facebookPermalink} target="_blank" rel="noreferrer">
+                    view live
+                  </a>
+                </>
+              ) : null}
+              {clip.facebookPublishStatus === "failed" && clip.facebookPublishError ? (
+                <span className="publish-error-detail"> — {clip.facebookPublishError}</span>
+              ) : null}
+            </p>
+          </div>
+        ) : null}
+
         <div className="clip-actions">
           {canApprove ? (
             <form action={approveClip}>
@@ -80,6 +143,7 @@ export function ClipCard({ clip }: { clip: Clip }) {
               </button>
             </form>
           ) : null}
+          {clip.status === "approved" ? <PublishButton clipId={clip.id} /> : null}
         </div>
       </div>
     </li>

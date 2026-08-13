@@ -17,6 +17,7 @@
     "hash-password": "tsx src/scripts/hash-password.ts"
   },
   "dependencies": {
+    "@vercel/blob": "^2.8.0",
     "drizzle-orm": "^0.45.2",
     "jose": "^6.2.8",
     "next": "^16.3.0",

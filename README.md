@@ -10,7 +10,9 @@ automatically** — a human has to explicitly approve or reject each clip from t
 
 ## What this app does *not* do (on purpose)
 
-- No auto-posting to any social platform. Approval is the end of the v1 workflow.
+- No auto-posting. A clip only goes to Instagram/Facebook when an admin clicks **Publish**
+  on an approved clip (see "Meta app setup" below for the credentials that step uses) —
+  nothing posts on its own.
 - No video download or re-encoding — clips are linked/embedded via Twitch's own URLs.
 - No public-facing clip gallery. The review queue is private and authenticated.
 - No invented engagement metrics — only what Twitch's Helix API actually returns.
@@ -55,6 +57,10 @@ Twitch exposes. A human still makes the actual creative call in the review queue
    booking CTA (`src/lib/caption.ts`).
 7. You review everything at `/admin/clips` and approve or reject. Nothing leaves this app
    automatically.
+8. Once approved, clicking **Publish** posts the clip to Instagram Reels and the Primordial
+   Den Facebook Page (see "Meta app setup" below for the credentials this needs). Each
+   platform is tracked and retried independently, so a failure on one never blocks or
+   re-posts the other.
 
 ## Local setup
 
@@ -99,6 +105,49 @@ account instead of an app token, plus a redirect-based auth flow this app does n
 implement. That is explicitly out of scope for v1 — flagging it here so it isn't a surprise
 later.
 
+## Meta app setup
+
+These credentials power the **Publish** button (posting approved clips to Instagram Reels
+and a Facebook Page) — the app code is already built and waiting on them; nothing here works
+until you provision them. One new **Primordial Den** Facebook Page is the target for both
+platforms, so the whole funnel (clip → "link in bio" → booking) stays under one consistent
+brand.
+
+1. Create a new Facebook Page for **Primordial Den** under a Business Portfolio (Meta Business
+   Suite → Business Settings → Accounts → Pages → Add) — the same Business Portfolio you'll
+   create the Meta App under in step 3.
+2. Link Primordial Den's existing Instagram account to that new Page (Instagram app →
+   Settings → Account type and tools → linked accounts, or Meta Business Suite → Accounts →
+   connect Instagram to the Page).
+3. Create the Meta App at the [Meta for Developers console](https://developers.facebook.com/apps/)
+   → My Apps → Create App (Business type), linked to that same Business Portfolio.
+4. Add the Content Publishing capability / Facebook Login for Business product (exact names
+   shift in Meta's dashboard over time).
+5. Request permissions: `pages_show_list`, `pages_read_engagement`, `pages_manage_posts`,
+   `instagram_basic`, `instagram_business_content_publish` (confirm current names in-dashboard —
+   Meta renames these periodically).
+6. In App Review → Permissions and Features, check **Standard vs Advanced Access** for each
+   permission. Since the Page and Instagram account are owned by the app's own Business
+   Portfolio, Standard Access may not require a public App Review submission — confirm this
+   live in the dashboard rather than assuming either way.
+7. Generate a **long-lived Page access token via a Business Manager System User** (no
+   expiration) → `META_PAGE_ACCESS_TOKEN`. This avoids building an OAuth refresh flow entirely.
+8. Look up the Page ID and its linked Instagram Business Account ID:
+   ```bash
+   curl -s "https://graph.facebook.com/v21.0/<page-id>?fields=instagram_business_account" \
+     -d "access_token=$META_PAGE_ACCESS_TOKEN" | jq
+   ```
+   → `META_PAGE_ID` is the Page ID you queried; `META_IG_USER_ID` is the
+   `instagram_business_account.id` field in the response.
+9. Verify the token via `GET /debug_token` (confirm scopes and that it shows no expiration).
+10. Do one manual smoke-test publish via the Graph API Explorer or curl before relying on it.
+11. Set `META_PAGE_ID`, `META_IG_USER_ID`, `META_PAGE_ACCESS_TOKEN`, and
+    `BLOB_READ_WRITE_TOKEN` (for re-hosting clip video before it's handed to Meta) in Vercel
+    Project Settings, same as the existing secrets.
+
+As with the Twitch client secret, treat `META_PAGE_ACCESS_TOKEN` as a real secret — anyone
+with it can post to the Page and its linked Instagram account.
+
 ## Environment variables
 
 All variables are documented with generation hints in [`.env.example`](.env.example). Summary:
@@ -114,6 +163,11 @@ All variables are documented with generation hints in [`.env.example`](.env.exam
 | `DEN_BOOKING_URL` | CTA link shown on every shortlisted clip. Defaults to `https://den.primordialgroove.com/book/dj`. |
 | `COLLECTION_WINDOW_DAYS` | How many trailing days of clips to fetch. Defaults to `7`. |
 | `TOP_CLIP_LIMIT` | How many clips stay shortlisted at once. Defaults to `5`. |
+| `META_PAGE_ID` | Facebook Page ID for the Primordial Den Page (see "Meta app setup"). |
+| `META_IG_USER_ID` | Instagram Business Account ID linked to that Page. |
+| `META_PAGE_ACCESS_TOKEN` | Long-lived Page access token from a Business Manager System User. |
+| `META_GRAPH_API_VERSION` | Graph API version to call. Defaults to `v21.0`. |
+| `BLOB_READ_WRITE_TOKEN` | Vercel Blob read/write token, used to re-host clip video before publishing to Meta. |
 
 ### Why custom auth instead of Clerk/Auth0/etc.
 
