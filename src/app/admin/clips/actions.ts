@@ -31,6 +31,7 @@ export async function approveClip(formData: FormData): Promise<void> {
     .where(eq(clips.id, id));
 
   revalidatePath("/admin/clips");
+  revalidatePath(`/admin/clips/${id}`);
 }
 
 export async function rejectClip(formData: FormData): Promise<void> {
@@ -44,6 +45,35 @@ export async function rejectClip(formData: FormData): Promise<void> {
     .where(eq(clips.id, id));
 
   revalidatePath("/admin/clips");
+  revalidatePath(`/admin/clips/${id}`);
+}
+
+export type NotesActionState = { status: "idle" } | { status: "ok" } | { status: "error"; message: string };
+
+export async function updateClipNotes(
+  prevState: NotesActionState,
+  formData: FormData,
+): Promise<NotesActionState> {
+  await requireSession();
+
+  try {
+    const id = requireId(formData);
+    const notes = formData.get("notes");
+    const db = getDb();
+    await db
+      .update(clips)
+      .set({ notes: typeof notes === "string" && notes.length > 0 ? notes : null, updatedAt: sql`now()` })
+      .where(eq(clips.id, id));
+
+    revalidatePath(`/admin/clips/${id}`);
+    return { status: "ok" };
+  } catch (error) {
+    console.error("Clip notes update failed:", {
+      name: error instanceof Error ? error.name : typeof error,
+      message: error instanceof Error ? error.message : String(error),
+    });
+    return { status: "error", message: "Could not save notes." };
+  }
 }
 
 export type CollectionActionState =
@@ -240,6 +270,7 @@ export async function publishClip(
           .set({ videoAssetError: message, updatedAt: sql`now()` })
           .where(eq(clips.id, id));
         revalidatePath("/admin/clips");
+        revalidatePath(`/admin/clips/${id}`);
         return { status: "error", message: `Could not acquire the clip's video: ${message}` };
       }
     }
@@ -270,6 +301,7 @@ export async function publishClip(
       .where(eq(clips.id, id));
 
     revalidatePath("/admin/clips");
+    revalidatePath(`/admin/clips/${id}`);
 
     return {
       status: "ok",

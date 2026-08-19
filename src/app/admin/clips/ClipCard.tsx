@@ -1,43 +1,9 @@
+import Link from "next/link";
 import { config } from "@/lib/config";
-import type { Clip, PlatformPublishStatus } from "@/db/schema";
+import type { Clip } from "@/db/schema";
 import { approveClip, rejectClip } from "./actions";
 import { PublishButton } from "./PublishButton";
-
-function formatDuration(seconds: number): string {
-  return `${Math.round(seconds)}s`;
-}
-
-function formatScore(clip: Clip): string {
-  if (clip.rankingReason) return clip.rankingReason;
-  if (clip.rankingScore == null) return "Not yet scored";
-  return `Score ${Math.round(clip.rankingScore * 100)}/100`;
-}
-
-function platformStatusLabel(status: PlatformPublishStatus): string {
-  switch (status) {
-    case "published":
-      return "Published";
-    case "pending":
-      return "Pending";
-    case "failed":
-      return "Failed";
-    default:
-      return "Not started";
-  }
-}
-
-function platformStatusClass(status: PlatformPublishStatus): string {
-  switch (status) {
-    case "published":
-      return "publish-result-ok";
-    case "pending":
-      return "publish-result-pending";
-    case "failed":
-      return "publish-result-error";
-    default:
-      return "";
-  }
-}
+import { formatDuration, formatScore, platformStatusLabel, platformStatusClass } from "./format";
 
 export function ClipCard({ clip }: { clip: Clip }) {
   const canApprove = clip.status !== "approved" && clip.status !== "published";
@@ -66,6 +32,10 @@ export function ClipCard({ clip }: { clip: Clip }) {
             {clip.title}
           </a>
         </h2>
+
+        <Link href={`/admin/clips/${clip.id}`} className="details-link">
+          View details →
+        </Link>
 
         <p className="clip-stats">
           {clip.creatorName} · {clip.viewCount.toLocaleString()} views ·{" "}
