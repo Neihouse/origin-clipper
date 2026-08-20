@@ -66,5 +66,12 @@ export const config = {
     get readWriteToken() {
       return required("BLOB_READ_WRITE_TOKEN");
     },
+    get retentionDays() {
+      const value = Number(process.env.VIDEO_ASSET_RETENTION_DAYS ?? 7);
+      if (!Number.isInteger(value) || value < 1 || value > 30) {
+        throw new Error("VIDEO_ASSET_RETENTION_DAYS must be an integer from 1 to 30");
+      }
+      return value;
+    },
   },
 };

@@ -44,6 +44,7 @@ export interface InstagramMediaPublishResponse {
 export interface InstagramMediaPermalinkResponse {
   id: string;
   permalink?: string;
+  owner?: { id?: string };
 }
 
 // -- Facebook: POST /{page-id}/videos with file_url --
@@ -55,4 +56,5 @@ export interface FacebookVideoPublishResponse {
 export interface FacebookVideoPermalinkResponse {
   id: string;
   permalink_url?: string;
+  from?: { id?: string };
 }

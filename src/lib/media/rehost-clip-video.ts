@@ -1,8 +1,11 @@
 import { put } from "@vercel/blob";
 import { config } from "@/lib/config";
 
+const SOURCE_VIDEO_FETCH_TIMEOUT_MS = 30_000;
+
 export interface RehostedVideo {
   url: string;
+  etag: string;
   size: number;
   contentType: string;
 }
@@ -26,7 +29,9 @@ export async function rehostClipVideo(
   sourceUrl: string,
   pathname: string,
 ): Promise<RehostedVideo> {
-  const res = await fetch(sourceUrl);
+  const res = await fetch(sourceUrl, {
+    signal: AbortSignal.timeout(SOURCE_VIDEO_FETCH_TIMEOUT_MS),
+  });
 
   if (!res.ok) {
     throw new Error(`Failed to fetch source video: ${res.status} ${res.statusText}`);
@@ -54,6 +59,7 @@ export async function rehostClipVideo(
 
   return {
     url: blob.url,
+    etag: blob.etag,
     size: buffer.byteLength,
     contentType: blob.contentType,
   };

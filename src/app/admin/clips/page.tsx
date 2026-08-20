@@ -3,11 +3,23 @@ import { desc, eq } from "drizzle-orm";
 import { getDb } from "@/db/client";
 import { clips, clipStatusEnum, type ClipStatus } from "@/db/schema";
 import { requireSession } from "@/lib/auth/require-session";
+import {
+  getCadencePublishingDashboard,
+  getPublishingStatesForClipIds,
+} from "@/lib/publishing/queries";
+import { CadenceHealth } from "./CadenceHealth";
 import { ClipCard } from "./ClipCard";
 import { CollectNowButton } from "./CollectNowButton";
+import { UpcomingSchedule } from "./UpcomingSchedule";
+import {
+  ADMIN_CADENCE_QUEUE_LIMIT,
+  buildCadenceHealth,
+  CADENCE_WINDOW_DAYS,
+  calculateQueueOverflow,
+} from "./cadence-health";
 
 export const dynamic = "force-dynamic";
-export const maxDuration = 120;
+export const maxDuration = 300;
 
 const FILTERS: { value: ClipStatus | "all"; label: string }[] = [
   { value: "shortlisted", label: "Shortlisted" },
@@ -36,14 +48,56 @@ export default async function AdminClipsPage({ searchParams }: PageProps) {
   const status = resolveStatus(statusParam);
 
   const db = getDb();
-  const rows =
+  const scheduleWindowStarts = new Date();
+  const scheduleWindowEnds = new Date(
+    scheduleWindowStarts.getTime() + CADENCE_WINDOW_DAYS * 24 * 60 * 60 * 1000,
+  );
+  const [rows, cadence] = await Promise.all([
     status === "all"
-      ? await db.select().from(clips).orderBy(desc(clips.rankingScore), desc(clips.clipCreatedAt))
-      : await db
+      ? db.select().from(clips).orderBy(desc(clips.rankingScore), desc(clips.clipCreatedAt))
+      : db
           .select()
           .from(clips)
           .where(eq(clips.status, status))
-          .orderBy(desc(clips.rankingScore), desc(clips.clipCreatedAt));
+          .orderBy(desc(clips.rankingScore), desc(clips.clipCreatedAt)),
+    getCadencePublishingDashboard(
+      {
+        now: scheduleWindowStarts,
+        horizon: scheduleWindowEnds,
+        limit: ADMIN_CADENCE_QUEUE_LIMIT,
+      },
+      db,
+    ),
+  ]);
+  const publishingStates = await getPublishingStatesForClipIds(
+    rows.map((clip) => clip.id),
+    db,
+  );
+
+  const upcoming = cadence.rows.map(({ clipId, title, creatorName, publishing }) => {
+    const fullyPublished =
+      publishing.instagramPublishStatus === "published" &&
+      publishing.facebookPublishStatus === "published";
+    return {
+      id: clipId,
+      title,
+      creatorName,
+      scheduledFor: publishing.scheduledFor?.toISOString() ?? null,
+      publishAttemptedAt: publishing.publishAttemptedAt?.toISOString() ?? null,
+      scheduleStatus: publishing.scheduleStatus,
+      scheduleError: publishing.scheduleError,
+      cleanupFailed: publishing.blobCleanupStatus === "failed",
+      cleanupError: publishing.blobCleanupError,
+      collaborationPending:
+        fullyPublished && publishing.instagramCollaborationStatus !== "accepted",
+      verificationPending: fullyPublished && publishing.publishVerifiedAt === null,
+    };
+  });
+  const health = buildCadenceHealth({
+    now: scheduleWindowStarts,
+    ...cadence.metrics,
+  });
+  const overflowCount = calculateQueueOverflow(cadence.totalCount, upcoming.length);
 
   return (
     <main className="review-page">
@@ -52,7 +106,8 @@ export default async function AdminClipsPage({ searchParams }: PageProps) {
           <h1>ORIGIN clip review</h1>
           <p className="review-subtitle">
             Field notes from ORIGIN, documenting what emerged through Primordial Groove and
-            Primordial Den. Nothing here posts anywhere until you approve it.
+            Primordial Den. Publishing requires an approved clip plus an explicit Publish now or
+            Schedule Publish action.
           </p>
         </div>
         <div className="review-header-actions">
@@ -64,6 +119,13 @@ export default async function AdminClipsPage({ searchParams }: PageProps) {
           </form>
         </div>
       </header>
+
+      <CadenceHealth health={health} />
+      <UpcomingSchedule
+        items={upcoming}
+        referenceNow={scheduleWindowStarts.toISOString()}
+        overflowCount={overflowCount}
+      />
 
       <nav className="status-filters">
         {FILTERS.map((filter) => (
@@ -82,7 +144,7 @@ export default async function AdminClipsPage({ searchParams }: PageProps) {
       ) : (
         <ul className="clip-list">
           {rows.map((clip) => (
-            <ClipCard key={clip.id} clip={clip} />
+            <ClipCard key={clip.id} clip={clip} publishing={publishingStates.get(clip.id)!} />
           ))}
         </ul>
       )}

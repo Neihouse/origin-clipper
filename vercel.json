@@ -4,6 +4,14 @@
     {
       "path": "/api/cron/collect-clips",
       "schedule": "0 15 * * 6"
+    },
+    {
+      "path": "/api/cron/publish-scheduled",
+      "schedule": "*/15 * * * *"
+    },
+    {
+      "path": "/api/cron/cleanup-assets",
+      "schedule": "17 11 * * *"
     }
   ]
 }

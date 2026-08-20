@@ -6,6 +6,7 @@ import { publishClip, type PublishActionState, type PublishPlatformResult } from
 const initialState: PublishActionState = { status: "idle" };
 
 function resultClass(result: PublishPlatformResult): string {
+  if (result.status === "manual_review") return "publish-result-review";
   if (result.status === "failed") return "publish-result-error";
   return "publish-result-ok";
 }
@@ -13,6 +14,9 @@ function resultClass(result: PublishPlatformResult): string {
 function resultLabel(platform: string, result: PublishPlatformResult): string {
   if (result.status === "published") return `${platform}: published`;
   if (result.status === "skipped") return `${platform}: already published`;
+  if (result.status === "manual_review") {
+    return `${platform}: outcome uncertain — inspect the live account before retrying`;
+  }
   return `${platform}: ${result.error ?? "failed"}`;
 }
 
@@ -24,7 +28,7 @@ export function PublishButton({ clipId }: { clipId: string }) {
       <form action={formAction}>
         <input type="hidden" name="id" value={clipId} />
         <button type="submit" className="publish-button" disabled={isPending}>
-          {isPending ? "Publishing…" : "Publish"}
+          {isPending ? "Publishing…" : "Publish now"}
         </button>
       </form>
       {state.status === "ok" ? (

@@ -18,6 +18,8 @@ export function platformStatusLabel(status: PlatformPublishStatus): string {
       return "Pending";
     case "failed":
       return "Failed";
+    case "manual_review":
+      return "Manual review required";
     default:
       return "Not started";
   }
@@ -31,6 +33,8 @@ export function platformStatusClass(status: PlatformPublishStatus): string {
       return "publish-result-pending";
     case "failed":
       return "publish-result-error";
+    case "manual_review":
+      return "publish-result-review";
     default:
       return "";
   }

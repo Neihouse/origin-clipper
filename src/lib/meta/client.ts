@@ -2,6 +2,7 @@ import { config } from "@/lib/config";
 import type { MetaGraphErrorResponse } from "./types";
 
 const GRAPH_API_BASE = "https://graph.facebook.com";
+const META_REQUEST_TIMEOUT_MS = 15_000;
 
 // HTTP statuses / Graph error codes known to be transient — rate limiting
 // and momentary service hiccups. Everything else (bad params, permission or
@@ -85,6 +86,10 @@ export async function metaGraphFetch<T>(
   const res = await fetch(url.toString(), {
     method,
     headers: { Authorization: `Bearer ${config.meta.pageAccessToken}` },
+    // Bound every request below the worker claim window. A POST aborted by
+    // this timer still has an ambiguous outcome and callers must not replay
+    // it automatically merely because the client stopped waiting.
+    signal: AbortSignal.timeout(META_REQUEST_TIMEOUT_MS),
   });
 
   let json: unknown;
