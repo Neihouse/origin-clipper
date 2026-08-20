@@ -4,7 +4,6 @@ import { eq } from "drizzle-orm";
 import { getDb } from "@/db/client";
 import { clips } from "@/db/schema";
 import { requireSession } from "@/lib/auth/require-session";
-import { config } from "@/lib/config";
 import { approveClip, rejectClip } from "../actions";
 import { PublishButton } from "../PublishButton";
 import { formatDuration, formatScore, platformStatusLabel, platformStatusClass } from "../format";
@@ -103,12 +102,6 @@ export default async function ClipDetailPage({ params }: PageProps) {
         <section className="detail-section">
           <h2>Proposed caption</h2>
           <pre className="detail-caption">{clip.proposedCaption}</pre>
-          <p className="cta-line">
-            Book a DJ recording — $250 ·{" "}
-            <a href={config.den.bookingUrl} target="_blank" rel="noreferrer">
-              {config.den.bookingUrl}
-            </a>
-          </p>
         </section>
       ) : null}
 

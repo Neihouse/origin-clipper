@@ -5,7 +5,8 @@ Private weekly marketing-clip pipeline for Primordial Groove's **ORIGIN** Twitch
 Every Saturday morning, a Vercel Cron job pulls the past week of Twitch clips for the ORIGIN
 channel, scores them with a transparent, deterministic ranking (views, recency, duration fit),
 and shortlists the top few into a private, password-protected review queue. Each shortlisted
-clip gets a proposed caption and a Den booking call-to-action. **Nothing is ever posted
+clip gets a proposed caption that documents ORIGIN as a cultural collaboration between
+Primordial Groove and Primordial Den. **Nothing is ever posted
 automatically** — a human has to explicitly approve or reject each clip from the review queue.
 
 ## What this app does *not* do (on purpose)
@@ -53,8 +54,9 @@ Twitch exposes. A human still makes the actual creative call in the review queue
    on a later run drops back to `discovered` — `shortlisted` always reflects the *current* top
    N of the undecided backlog, not a one-time snapshot. Clips already `approved`, `rejected`,
    or `published` are never touched by this step.
-6. Each newly shortlisted clip gets a deterministic proposed title/caption with the Den
-   booking CTA (`src/lib/caption.ts`).
+6. Each newly shortlisted clip gets a deterministic proposed title/caption framed as an
+   ORIGIN field note: the Den as host and Primordial Groove as cultural collaborator
+   (`src/lib/caption.ts`).
 7. You review everything at `/admin/clips` and approve or reject. Nothing leaves this app
    automatically.
 8. Once approved, clicking **Publish** posts the clip to Instagram Reels and the Primordial
@@ -110,8 +112,8 @@ later.
 These credentials power the **Publish** button (posting approved clips to Instagram Reels
 and a Facebook Page) — the app code is already built and waiting on them; nothing here works
 until you provision them. One new **Primordial Den** Facebook Page is the target for both
-platforms, so the whole funnel (clip → "link in bio" → booking) stays under one consistent
-brand.
+platforms, where the posts document ORIGIN as a shared cultural practice: the Den hosts the
+space and Primordial Groove is the cultural collaborator.
 
 1. Create a new Facebook Page for **Primordial Den** under a Business Portfolio (Meta Business
    Suite → Business Settings → Accounts → Pages → Add) — the same Business Portfolio you'll
@@ -160,7 +162,6 @@ All variables are documented with generation hints in [`.env.example`](.env.exam
 | `CRON_SECRET` | Shared secret Vercel Cron sends as `Authorization: Bearer <value>`. Generate with `openssl rand -hex 32`. |
 | `ADMIN_PASSWORD_HASH` | scrypt hash of the admin password. Generate with `npm run hash-password -- 'your-password'`. |
 | `SESSION_SECRET` | Signs the admin session JWT cookie. Generate with `openssl rand -hex 32`. |
-| `DEN_BOOKING_URL` | CTA link shown on every shortlisted clip. Defaults to `https://den.primordialgroove.com/book/dj`. |
 | `COLLECTION_WINDOW_DAYS` | How many trailing days of clips to fetch. Defaults to `7`. |
 | `TOP_CLIP_LIMIT` | How many clips stay shortlisted at once. Defaults to `5`. |
 | `META_PAGE_ID` | Facebook Page ID for the Primordial Den Page (see "Meta app setup"). |
@@ -214,7 +215,7 @@ shared elsewhere.
 
 Sign in at `/login`, then go to `/admin/clips`. Each card shows the thumbnail, an embedded
 player link, title, creator, view count, duration, capture date, the ranking score with a
-plain-language breakdown, the proposed caption + Den CTA, and **Approve** / **Reject** buttons.
+plain-language breakdown, the proposed field-note caption, and **Approve** / **Reject** buttons.
 Filter by status (`discovered`, `shortlisted`, `approved`, `rejected`, `published`) with the
 tabs at the top. Approving or rejecting is immediate and does not require a second
 confirmation step — there is nothing further it triggers (no posting), so this is safe by

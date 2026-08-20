@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { config } from "@/lib/config";
 import type { Clip } from "@/db/schema";
 import { approveClip, rejectClip } from "./actions";
 import { PublishButton } from "./PublishButton";
@@ -52,13 +51,6 @@ export function ClipCard({ clip }: { clip: Clip }) {
             <pre>{clip.proposedCaption}</pre>
           </details>
         ) : null}
-
-        <p className="cta-line">
-          Book a DJ recording — $250 ·{" "}
-          <a href={config.den.bookingUrl} target="_blank" rel="noreferrer">
-            {config.den.bookingUrl}
-          </a>
-        </p>
 
         {clip.instagramPublishStatus !== "not_started" ||
         clip.facebookPublishStatus !== "not_started" ? (

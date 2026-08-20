@@ -51,8 +51,8 @@ export default async function AdminClipsPage({ searchParams }: PageProps) {
         <div>
           <h1>ORIGIN clip review</h1>
           <p className="review-subtitle">
-            Ranked by views, recency, and short-form duration fit. Nothing here posts anywhere
-            until you approve it.
+            Field notes from ORIGIN, documenting what emerged through Primordial Groove and
+            Primordial Den. Nothing here posts anywhere until you approve it.
           </p>
         </div>
         <div className="review-header-actions">

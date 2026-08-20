@@ -40,11 +40,6 @@ export const config = {
       return required("SESSION_SECRET");
     },
   },
-  den: {
-    get bookingUrl() {
-      return process.env.DEN_BOOKING_URL || "https://den.primordialgroove.com/book/dj";
-    },
-  },
   collection: {
     get windowDays() {
       return Number(process.env.COLLECTION_WINDOW_DAYS ?? 7);
