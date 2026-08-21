@@ -8,10 +8,13 @@ import type {
 } from "./types";
 
 // Container processing for a clip-length Reel is typically done in single-
-// digit seconds; this bound (30 attempts * 3s = up to 90s) gives generous
-// headroom without letting one publish attempt hang indefinitely.
+// digit seconds. The elapsed deadline includes slow HTTP requests (which
+// have their own 15s cap in metaGraphFetch), keeping the full polling stage
+// under roughly two minutes rather than multiplying request timeouts by the
+// attempt count.
 const POLL_INTERVAL_MS = 3_000;
 const MAX_POLL_ATTEMPTS = 30;
+const POLL_START_DEADLINE_MS = 105_000;
 
 const TERMINAL_STATUS_CODES: ReadonlySet<InstagramContainerStatusCode> = new Set([
   "FINISHED",
@@ -19,6 +22,34 @@ const TERMINAL_STATUS_CODES: ReadonlySet<InstagramContainerStatusCode> = new Set
   "EXPIRED",
   "PUBLISHED",
 ]);
+const ALL_STATUS_CODES: ReadonlySet<string> = new Set([
+  "FINISHED",
+  "ERROR",
+  "EXPIRED",
+  "IN_PROGRESS",
+  "PUBLISHED",
+]);
+
+function requireGraphId(value: unknown, operation: string): string {
+  if (typeof value !== "string" || value.length === 0) {
+    throw new Error(`${operation} returned no usable id`);
+  }
+  return value;
+}
+
+function safeInstagramPermalink(value: unknown): string | undefined {
+  if (typeof value !== "string" || value.length > 2_048) return undefined;
+  try {
+    const url = new URL(value);
+    const host = url.hostname.toLowerCase();
+    if (url.protocol !== "https:" || !(host === "instagram.com" || host.endsWith(".instagram.com"))) {
+      return undefined;
+    }
+    return url.toString();
+  } catch {
+    return undefined;
+  }
+}
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -45,7 +76,7 @@ export async function createReelsContainer({
     method: "POST",
     params: { media_type: "REELS", video_url: videoUrl, caption },
   });
-  return res.id;
+  return requireGraphId(res?.id, "Instagram container creation");
 }
 
 /**
@@ -57,17 +88,24 @@ export async function createReelsContainer({
 export async function pollContainerStatus(
   containerId: string,
 ): Promise<InstagramContainerStatusCode> {
+  const startedAt = Date.now();
   for (let attempt = 0; attempt < MAX_POLL_ATTEMPTS; attempt += 1) {
+    if (Date.now() - startedAt >= POLL_START_DEADLINE_MS) break;
     const res = await metaGraphFetch<InstagramContainerStatusResponse>(`/${containerId}`, {
       params: { fields: "status_code" },
     });
+    if (!ALL_STATUS_CODES.has(res?.status_code)) {
+      throw new Error("Instagram container returned an unknown status");
+    }
     if (TERMINAL_STATUS_CODES.has(res.status_code)) {
       return res.status_code;
     }
-    await sleep(POLL_INTERVAL_MS);
+    const remainingMs = POLL_START_DEADLINE_MS - (Date.now() - startedAt);
+    if (remainingMs <= 0) break;
+    await sleep(Math.min(POLL_INTERVAL_MS, remainingMs));
   }
   throw new Error(
-    `Instagram container ${containerId} did not finish processing after ${MAX_POLL_ATTEMPTS} polls`,
+    `Instagram container ${containerId} did not finish processing before the polling deadline`,
   );
 }
 
@@ -88,7 +126,7 @@ export async function publishContainer({
     method: "POST",
     params: { creation_id: containerId },
   });
-  return res.id;
+  return requireGraphId(res?.id, "Instagram media publish");
 }
 
 /**
@@ -99,64 +137,45 @@ export async function publishContainer({
  */
 export async function getMediaPermalink(mediaId: string): Promise<string | undefined> {
   try {
-    const res = await metaGraphFetch<InstagramMediaPermalinkResponse>(`/${mediaId}`, {
-      params: { fields: "permalink" },
-    });
-    return res.permalink;
+    return (await readPublishedMedia(mediaId)).permalink;
   } catch {
     return undefined;
   }
 }
 
-export interface PublishReelInput {
-  igUserId: string;
-  videoUrl: string;
-  caption: string;
-  /**
-   * Container id from a prior attempt (e.g. stored on clips.instagramContainerId).
-   * When set, container creation is skipped and this id is polled/published
-   * directly — clicking Publish twice must never create a second container
-   * for the same clip.
-   */
-  existingContainerId?: string;
-}
-
-export interface PublishReelResult {
-  containerId: string;
-  mediaId: string;
-  permalink?: string;
-}
-
 /**
- * Orchestrates the full Reels publish flow: create-or-reuse container, poll
- * to FINISHED, publish, best-effort permalink lookup. Throws (without
- * publishing) if the container ends in ERROR or EXPIRED — callers should
- * persist the returned/thrown container id either way so a retry can decide
- * whether to reuse it or start fresh.
- *
- * Note: a reused container that comes back EXPIRED (Meta expires unpublished
- * containers after ~24h) cannot be published — this throws in that case
- * rather than silently minting a new container, since only the caller knows
- * whether "create a new one and retry" is the right response.
+ * Strict read-back used by the manual-review workflow. Unlike the
+ * best-effort post-publish lookup above, this rejects an inaccessible id, an
+ * id mismatch, or an unsafe/missing permalink so operator-entered text alone
+ * can never turn an ambiguous POST into a confirmed publication.
  */
-export async function publishReel({
-  igUserId,
-  videoUrl,
-  caption,
-  existingContainerId,
-}: PublishReelInput): Promise<PublishReelResult> {
-  const containerId =
-    existingContainerId ?? (await createReelsContainer({ igUserId, videoUrl, caption }));
-
-  const statusCode = await pollContainerStatus(containerId);
-  if (statusCode !== "FINISHED") {
-    throw new Error(
-      `Instagram container ${containerId} ended in status ${statusCode}, not publishable`,
-    );
+async function readPublishedMedia(
+  mediaId: string,
+): Promise<{ permalink: string; ownerId: string | null }> {
+  const res = await metaGraphFetch<InstagramMediaPermalinkResponse>(`/${mediaId}`, {
+    params: { fields: "id,owner,permalink" },
+  });
+  const returnedId = requireGraphId(res?.id, "Instagram media verification");
+  if (returnedId !== mediaId) {
+    throw new Error("Instagram media verification returned a different id");
   }
+  const permalink = safeInstagramPermalink(res?.permalink);
+  if (!permalink) {
+    throw new Error("Instagram media verification returned no safe permalink");
+  }
+  return {
+    permalink,
+    ownerId: typeof res?.owner?.id === "string" ? res.owner.id : null,
+  };
+}
 
-  const mediaId = await publishContainer({ igUserId, containerId });
-  const permalink = await getMediaPermalink(mediaId);
-
-  return { containerId, mediaId, permalink };
+export async function verifyPublishedMedia(
+  mediaId: string,
+  expectedIgUserId: string,
+): Promise<string> {
+  const media = await readPublishedMedia(mediaId);
+  if (!media.ownerId || media.ownerId !== expectedIgUserId) {
+    throw new Error("Instagram media verification returned a different owner");
+  }
+  return media.permalink;
 }

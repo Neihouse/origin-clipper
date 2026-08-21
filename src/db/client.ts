@@ -2,7 +2,7 @@ import { drizzle, type PostgresJsDatabase } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import * as schema from "./schema";
 
-type Db = PostgresJsDatabase<typeof schema>;
+export type Db = PostgresJsDatabase<typeof schema>;
 
 // Lazily constructed so importing this module never touches DATABASE_URL —
 // Next.js evaluates route modules during `next build` even for dynamic routes.

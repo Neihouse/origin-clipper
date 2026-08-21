@@ -38,6 +38,7 @@
  */
 
 const GQL_URL = "https://gql.twitch.tv/gql";
+const TWITCH_GQL_TIMEOUT_MS = 15_000;
 
 // Twitch's own public web client id — used by the twitch.tv frontend itself,
 // not a credential of ours. This is what makes the trick work without any
@@ -124,6 +125,7 @@ async function fetchClipGqlData(twitchClipSlug: string): Promise<TwitchClipGqlDa
         },
       },
     ]),
+    signal: AbortSignal.timeout(TWITCH_GQL_TIMEOUT_MS),
   });
 
   if (!res.ok) {

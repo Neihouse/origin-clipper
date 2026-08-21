@@ -5,20 +5,23 @@ Private weekly marketing-clip pipeline for Primordial Groove's **ORIGIN** Twitch
 Every Saturday morning, a Vercel Cron job pulls the past week of Twitch clips for the ORIGIN
 channel, scores them with a transparent, deterministic ranking (views, recency, duration fit),
 and shortlists the top few into a private, password-protected review queue. Each shortlisted
-clip gets a proposed caption that documents ORIGIN as a cultural collaboration between
-Primordial Groove and Primordial Den. **Nothing is ever posted
-automatically** — a human has to explicitly approve or reject each clip from the review queue.
+clip gets a proposed field-note caption naming ORIGIN as a Primordial Groove weekly held at
+Primordial Den. **Nothing is posted without a human decision** — an
+admin approves the exact clip and then explicitly chooses either **Publish now** or
+**Schedule Publish** for one future time. Scheduling is a one-clip, one-time authorization;
+it is not permission for the system to choose future content.
 
 ## What this app does *not* do (on purpose)
 
-- No auto-posting. A clip only goes to Instagram/Facebook when an admin clicks **Publish**
-  on an approved clip (see "Meta app setup" below for the credentials that step uses) —
-  nothing posts on its own.
-- No video download or re-encoding — clips are linked/embedded via Twitch's own URLs.
+- No unreviewed or standing auto-posting. The worker can deliver only a specific approved
+  clip with a persisted **Schedule Publish** authorization. It never selects, approves, or
+  schedules content on its own.
+- No permanent local video archive or re-encoding. One approved clip is fetched and re-hosted
+  only when publishing begins, then reused across safe retries for that same post.
 - No public-facing clip gallery. The review queue is private and authenticated.
 - No invented engagement metrics — only what Twitch's Helix API actually returns.
 - No unrelated Primordial Groove / Den website features. This repo only owns Twitch
-  ingestion, ranking, review, and (later) publishing.
+  ingestion, ranking, review, and publishing.
 
 These are intentional scope boundaries for v1, not gaps to be quietly filled in later.
 
@@ -55,14 +58,57 @@ Twitch exposes. A human still makes the actual creative call in the review queue
    N of the undecided backlog, not a one-time snapshot. Clips already `approved`, `rejected`,
    or `published` are never touched by this step.
 6. Each newly shortlisted clip gets a deterministic proposed title/caption framed as an
-   ORIGIN field note: the Den as host and Primordial Groove as cultural collaborator
-   (`src/lib/caption.ts`).
-7. You review everything at `/admin/clips` and approve or reject. Nothing leaves this app
-   automatically.
-8. Once approved, clicking **Publish** posts the clip to Instagram Reels and the Primordial
-   Den Facebook Page (see "Meta app setup" below for the credentials this needs). Each
-   platform is tracked and retried independently, so a failure on one never blocks or
-   re-posts the other.
+   ORIGIN field note: recorded at Primordial Den, with ORIGIN named as a Primordial Groove
+   weekly held at the Den (`src/lib/caption.ts`).
+7. You review everything at `/admin/clips` and approve or reject. Approval alone never sends
+   anything to Meta.
+8. Once approved, the operator either clicks **Publish now** or chooses a Pacific date/time
+   and clicks **Schedule Publish**. The latter records one future authorization.
+9. The scheduled worker claims only due, explicitly authorized rows. Instagram and Facebook
+   are tracked independently, so a confirmed success is never reposted during a retry.
+10. After Instagram publishes, the operator invites `@primordialgroove` as a collaborator in
+    Instagram and records whether the invitation is pending or accepted. Once both platform
+    posts are live, the operator opens them and marks publishing verified.
+
+## Scheduled publishing and weekly cadence
+
+The admin queue includes a compact four-week calendar. Schedule controls use **Pacific time
+(`America/Los_Angeles`)** and convert the chosen wall-clock time to an explicit UTC instant
+before it reaches the server. A publish must be at least five minutes ahead and no more than
+28 days away. Daylight-saving times that do not exist or occur twice are rejected rather than
+silently shifted.
+
+The private queue summarizes cadence health without making editorial decisions: upcoming
+scheduled posts in the next 28 days, the next due time, the approved-but-unscheduled buffer,
+overdue/failed/manual-review work, incomplete collaborator/verification follow-up, and failed
+temporary-media cleanup. It warns when no post is due within seven days or the buffer drops
+below four. Those thresholds are planning prompts, not an instruction to publish filler or a
+fixed weekday. The attention/upcoming list is capped at 50 rows and reports how many additional
+records are outside the bounded view.
+
+Publishing history is append-only at the authorization level. `clip_publications` holds the
+durable per-clip delivery result, while each **Publish now**, **Schedule Publish**, reschedule,
+or retry creates a separate `publication_attempts` audit row. Cards and cadence health read
+the latest attempt rather than rewriting or accidentally counting older failed attempts.
+
+- Run a six-week pilot with one guaranteed ORIGIN field note per week.
+- During weekly review, choose one primary clip and one backup. The app never makes that
+  editorial choice.
+- Keep four approved, publishable clips in reserve; add a second weekly post only when that
+  buffer remains healthy.
+- Schedule the primary in a consistent slot. A scheduled item can be rescheduled or cancelled
+  until the worker claims it; while claimed, those controls lock.
+- A clear `failed` result is safe to retry without reposting a platform that already succeeded.
+  An ambiguous response enters `manual_review` and stays locked until an operator inspects the
+  real Instagram/Facebook profiles and records whether a post exists. A claimed published
+  result requires the numeric Meta ID; the server reads that object back from Meta and changes
+  no state if the ID cannot be verified.
+- The Instagram collaborator invitation remains manual. Publishing from Primordial Den and
+  inviting Primordial Groove communicates the PG ↔ Den relationship through the two accounts;
+  the caption stays documentary rather than promotional.
+
+At the end of six weeks, review delivery reliability, clip-buffer health, completion/watch
+behavior, shares, and saves. Change the slot—or increase frequency—only from that evidence.
 
 ## Local setup
 
@@ -109,11 +155,10 @@ later.
 
 ## Meta app setup
 
-These credentials power the **Publish** button (posting approved clips to Instagram Reels
-and a Facebook Page) — the app code is already built and waiting on them; nothing here works
-until you provision them. One new **Primordial Den** Facebook Page is the target for both
-platforms, where the posts document ORIGIN as a shared cultural practice: the Den hosts the
-space and Primordial Groove is the cultural collaborator.
+These credentials power **Publish now** and the explicitly authorized scheduled worker,
+posting approved clips to Instagram Reels and a Facebook Page. One **Primordial Den** Facebook
+Page is the target for both platforms. After Instagram publishes, an operator manually invites
+`@primordialgroove` as collaborator; the Graph API publish step does not automate that invitation.
 
 1. Create a new Facebook Page for **Primordial Den** under a Business Portfolio (Meta Business
    Suite → Business Settings → Accounts → Pages → Add) — the same Business Portfolio you'll
@@ -150,6 +195,14 @@ space and Primordial Groove is the cultural collaborator.
 As with the Twitch client secret, treat `META_PAGE_ACCESS_TOKEN` as a real secret — anyone
 with it can post to the Page and its linked Instagram account.
 
+**Post-publish insights** (views, likes, comments, etc. on already-published posts) reuse this
+same `META_PAGE_ACCESS_TOKEN` — no new secret. They do need their own read permissions on the
+token, though: confirm `pages_read_engagement` (already requested above) actually covers Page
+video insights, and separately request/confirm `instagram_manage_insights` for Instagram Reels
+insights (exact current name TBD — check Meta's dashboard, as with the publish permissions
+above). If these read permissions aren't granted, the insights refresh simply records a
+per-platform fetch error and leaves the rest of the app, including publishing, unaffected.
+
 ## Environment variables
 
 All variables are documented with generation hints in [`.env.example`](.env.example). Summary:
@@ -168,7 +221,10 @@ All variables are documented with generation hints in [`.env.example`](.env.exam
 | `META_IG_USER_ID` | Instagram Business Account ID linked to that Page. |
 | `META_PAGE_ACCESS_TOKEN` | Long-lived Page access token from a Business Manager System User. |
 | `META_GRAPH_API_VERSION` | Graph API version to call. Defaults to `v21.0`. |
+| `INSIGHTS_REFRESH_WINDOW_DAYS` | Only clips published within this many days are refreshed by the insights cron sweep. Defaults to `14`. |
+| `INSIGHTS_BATCH_SIZE` | Max clips the insights cron sweep refreshes per invocation. Defaults to `20`. |
 | `BLOB_READ_WRITE_TOKEN` | Vercel Blob read/write token, used to re-host clip video before publishing to Meta. |
+| `VIDEO_ASSET_RETENTION_DAYS` | Days to retain a verified post's temporary Blob asset before cleanup. Integer `1`–`30`; defaults to `7`. |
 
 ### Why custom auth instead of Clerk/Auth0/etc.
 
@@ -197,7 +253,17 @@ change — it only touches `src/lib/auth/*` and `src/proxy.ts`.
 
 ## Cron behavior
 
-`vercel.json` schedules the collector for `0 15 * * 6` — **15:00 UTC every Saturday**.
+`vercel.json` schedules four authenticated jobs:
+
+- `/api/cron/collect-clips` at `0 15 * * 6` — **15:00 UTC every Saturday**.
+- `/api/cron/publish-scheduled` at `*/15 * * * *` — every 15 minutes, to claim due,
+  explicitly authorized publishes.
+- `/api/cron/cleanup-assets` at `17 11 * * *` — **11:17 UTC daily**, to remove eligible
+  temporary Blob assets after the configured retention period.
+- `/api/cron/refresh-insights` at `0 */6 * * *` — every 6 hours, to pull fresh
+  view/like/comment/share metrics for clips published within `INSIGHTS_REFRESH_WINDOW_DAYS`,
+  staleness-first, up to `INSIGHTS_BATCH_SIZE` per run. A per-platform fetch failure records
+  only that platform's error and leaves its last-good numbers in place.
 
 Vercel Cron schedules are UTC-only and have no daylight-saving awareness. 15:00 UTC is
 7:00 AM Pacific during PDT (spring–fall) and 8:00 AM Pacific during PST (winter) — i.e. it
@@ -206,10 +272,26 @@ by an hour twice a year. If tighter precision is ever needed, that requires eith
 timezone-aware scheduler outside Vercel Cron or manually adjusting the cron expression twice a
 year — not implemented here as it's unnecessary for a weekly marketing job.
 
-The route itself (`src/app/api/cron/collect-clips/route.ts`) rejects any request whose
-`Authorization` header doesn't match `Bearer $CRON_SECRET`, so it's safe to be a public URL —
-Vercel sends that header automatically for scheduled invocations, and it should never be
-shared elsewhere.
+All four routes reject requests whose `Authorization` header does not match
+`Bearer $CRON_SECRET`, so they are safe to expose as cron endpoints. Vercel sends that header
+for scheduled invocations, and it should never be shared elsewhere. The chosen publish time
+is an eligibility boundary, not an exact delivery guarantee: the worker normally starts it on
+the next 15-minute run.
+
+The due-publish worker does not assume cron delivery is exactly once. Vercel can overlap or
+duplicate invocations and does not automatically retry a failed invocation, so each run claims
+a small bounded batch with an atomic database update, unique claim token, and expiring lease.
+Two workers cannot validly publish the same row. If a claim expires after an outbound Meta
+request, it is never replayed automatically: the row fails closed into `manual_review` because
+the public post may exist even if the response was lost. The next operator resolves that state
+from the actual Instagram/Facebook profiles before creating any new authorization.
+
+Asset cleanup is deliberately downstream of human verification. A Blob becomes eligible only
+after Instagram and Facebook are both published, the operator has marked publishing verified,
+`VIDEO_ASSET_RETENTION_DAYS` has elapsed, and no active publication attempt can still need the
+asset. Cleanup claims use a lease, and deletion sends the stored Blob ETag as `ifMatch`, so a
+replacement at the same URL cannot be deleted by a stale claim. The stored asset URL/ETag are
+cleared only after deletion succeeds; failures cool down and retry on a later daily run.
 
 ## Approving clips
 
@@ -219,7 +301,19 @@ plain-language breakdown, the proposed field-note caption, and **Approve** / **R
 Filter by status (`discovered`, `shortlisted`, `approved`, `rejected`, `published`) with the
 tabs at the top. Approving or rejecting is immediate and does not require a second
 confirmation step — there is nothing further it triggers (no posting), so this is safe by
-design for v1.
+design. An approved card then offers two separate actions:
+
+- **Publish now** starts one guarded Instagram/Facebook attempt immediately.
+- **Schedule Publish** authorizes that exact approved clip and stored caption once. It becomes
+  eligible at the selected Pacific time and normally starts on the next 15-minute worker run.
+  The date may be changed or cancelled until the worker claims it.
+
+Scheduled, processing, failed, overdue, and manual-review states remain visible on the card
+and detail page. A failed result is retryable; `manual_review` is deliberately not. For manual
+review, inspect the real profiles and record whether the post exists before the app unlocks a
+retry. Once Instagram is live, use the checklist to record the collaborator invitation as
+pending/accepted. **Mark publishing verified** stays unavailable until both platforms have
+confirmed success and still means a person actually inspected both posts.
 
 The **Collect now** button at the top of the page runs the same collection logic as the
 Saturday cron job, on demand, from the browser — no `CRON_SECRET` or terminal needed, just
@@ -238,8 +332,9 @@ an error) once it finishes.
    ```bash
    DATABASE_URL="<production connection string>" npm run db:migrate
    ```
-5. Deploy. `vercel.json` already declares the weekly cron — no extra dashboard configuration
-   needed, but confirm it appears under the project's Cron Jobs tab after the first deploy.
+5. Deploy. `vercel.json` declares the collection, due-publish, verified-asset-cleanup, and
+   insights-refresh crons — no extra dashboard configuration is needed, but confirm all four
+   appear under the project's Cron Jobs tab after the first deploy.
 6. Visit `/login` on the deployed URL and sign in with the password behind
    `ADMIN_PASSWORD_HASH`.
 
@@ -249,8 +344,8 @@ authenticated, but there is no IP allowlisting — treat the admin password and 
 
 ## What's deferred beyond v1
 
-- Automatic publishing to any social platform (Instagram, TikTok, X, etc.) once approved.
-- Any video download, clipping, re-encoding, or captioning of the video itself.
+- Adding another outbound platform (TikTok, YouTube Shorts, X, etc.).
+- A permanent video archive, clipping, re-encoding, or captioning of the video itself.
 - A public gallery or embed feed of approved clips.
 - Multi-user accounts / roles.
 - Twitch user-authorization (OAuth) flow, needed only if a future version wants to create
@@ -259,13 +354,16 @@ authenticated, but there is no IP allowlisting — treat the admin password and 
 ## Tests
 
 ```bash
-npm run test        # vitest run — ranking logic is fully unit-tested
+npm run test        # Vitest: ranking, caption, time, policy, cron, and auth-boundary coverage
+npm run test:integration # Real PostgreSQL locking/claim tests; requires TEST_DATABASE_URL
 npm run typecheck
 npm run lint
 npm run build
 ```
 
-Only the pure ranking/caption logic has automated tests; DB-touching code (the collector,
-Server Actions) is not unit-tested in v1 since there's no test database wired up in this
-environment — verify those manually against a real `DATABASE_URL` before relying on them in
-production.
+Pure ranking, caption, Pacific-time conversion, publishing policy, route authentication, and
+platform request behavior have automated tests. The opt-in integration suite verifies real
+PostgreSQL claims, partial unique indexes, concurrent workers, stale leases, and ETag-safe Blob
+cleanup against a dedicated disposable database or Neon branch. It never uses `DATABASE_URL`
+and makes no Meta or Blob request. Follow [the integration-test safety and setup guide](docs/publishing-integration-tests.md)
+before running it. Never use the public accounts for an unapproved smoke test.

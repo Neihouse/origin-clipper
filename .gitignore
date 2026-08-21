@@ -38,3 +38,4 @@ skills-lock.json
 
 # test / coverage
 coverage/
+output/playwright/

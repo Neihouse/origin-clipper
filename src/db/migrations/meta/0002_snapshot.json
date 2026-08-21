@@ -1,0 +1,844 @@
+{
+  "id": "eab6f876-73a9-44a0-b1db-8181a1a9458f",
+  "prevId": "092a59b0-2524-4eb9-af3e-9caa71092dd6",
+  "version": "7",
+  "dialect": "postgresql",
+  "tables": {
+    "public.clip_publications": {
+      "name": "clip_publications",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "clip_id": {
+          "name": "clip_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "video_asset_url": {
+          "name": "video_asset_url",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "video_asset_etag": {
+          "name": "video_asset_etag",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "video_asset_fetched_at": {
+          "name": "video_asset_fetched_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "video_asset_error": {
+          "name": "video_asset_error",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "blob_cleanup_status": {
+          "name": "blob_cleanup_status",
+          "type": "blob_cleanup_status",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'retained'"
+        },
+        "blob_cleanup_claim_token": {
+          "name": "blob_cleanup_claim_token",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "blob_cleanup_locked_until": {
+          "name": "blob_cleanup_locked_until",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "blob_cleanup_attempted_at": {
+          "name": "blob_cleanup_attempted_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "blob_deleted_at": {
+          "name": "blob_deleted_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "blob_cleanup_error": {
+          "name": "blob_cleanup_error",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "instagram_publish_status": {
+          "name": "instagram_publish_status",
+          "type": "platform_publish_status",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'not_started'"
+        },
+        "instagram_container_id": {
+          "name": "instagram_container_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "instagram_media_id": {
+          "name": "instagram_media_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "instagram_permalink": {
+          "name": "instagram_permalink",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "instagram_published_at": {
+          "name": "instagram_published_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "instagram_publish_error": {
+          "name": "instagram_publish_error",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "facebook_publish_status": {
+          "name": "facebook_publish_status",
+          "type": "platform_publish_status",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'not_started'"
+        },
+        "facebook_post_id": {
+          "name": "facebook_post_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "facebook_permalink": {
+          "name": "facebook_permalink",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "facebook_published_at": {
+          "name": "facebook_published_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "facebook_publish_error": {
+          "name": "facebook_publish_error",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "instagram_collaboration_status": {
+          "name": "instagram_collaboration_status",
+          "type": "instagram_collaboration_status",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'not_requested'"
+        },
+        "instagram_collaboration_updated_at": {
+          "name": "instagram_collaboration_updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "publish_verified_at": {
+          "name": "publish_verified_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "clip_publications_clip_id_unique": {
+          "name": "clip_publications_clip_id_unique",
+          "columns": [
+            {
+              "expression": "clip_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "clip_publications_cleanup_due_idx": {
+          "name": "clip_publications_cleanup_due_idx",
+          "columns": [
+            {
+              "expression": "blob_cleanup_status",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "publish_verified_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "clip_publications_clip_id_clips_id_fk": {
+          "name": "clip_publications_clip_id_clips_id_fk",
+          "tableFrom": "clip_publications",
+          "tableTo": "clips",
+          "columnsFrom": [
+            "clip_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "clip_publications_id_clip_id_unique": {
+          "name": "clip_publications_id_clip_id_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "id",
+            "clip_id"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {
+        "clip_publications_cleanup_claim_check": {
+          "name": "clip_publications_cleanup_claim_check",
+          "value": "(\"clip_publications\".\"blob_cleanup_status\" = 'processing' AND \"clip_publications\".\"blob_cleanup_claim_token\" IS NOT NULL AND \"clip_publications\".\"blob_cleanup_locked_until\" IS NOT NULL) OR (\"clip_publications\".\"blob_cleanup_status\" <> 'processing' AND \"clip_publications\".\"blob_cleanup_claim_token\" IS NULL AND \"clip_publications\".\"blob_cleanup_locked_until\" IS NULL)"
+        },
+        "clip_publications_deleted_asset_check": {
+          "name": "clip_publications_deleted_asset_check",
+          "value": "\"clip_publications\".\"blob_cleanup_status\" <> 'deleted' OR (\"clip_publications\".\"blob_deleted_at\" IS NOT NULL AND \"clip_publications\".\"video_asset_url\" IS NULL AND \"clip_publications\".\"video_asset_etag\" IS NULL)"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.clips": {
+      "name": "clips",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "twitch_clip_id": {
+          "name": "twitch_clip_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "broadcaster_id": {
+          "name": "broadcaster_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "title": {
+          "name": "title",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "creator_name": {
+          "name": "creator_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "url": {
+          "name": "url",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "embed_url": {
+          "name": "embed_url",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "thumbnail_url": {
+          "name": "thumbnail_url",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "view_count": {
+          "name": "view_count",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "duration_seconds": {
+          "name": "duration_seconds",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "clip_created_at": {
+          "name": "clip_created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "stream_date": {
+          "name": "stream_date",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "video_id": {
+          "name": "video_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "vod_offset_seconds": {
+          "name": "vod_offset_seconds",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ranking_score": {
+          "name": "ranking_score",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ranking_reason": {
+          "name": "ranking_reason",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "status": {
+          "name": "status",
+          "type": "clip_status",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'discovered'"
+        },
+        "proposed_caption": {
+          "name": "proposed_caption",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "proposed_title": {
+          "name": "proposed_title",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "notes": {
+          "name": "notes",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "approved_at": {
+          "name": "approved_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "published_at": {
+          "name": "published_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "video_asset_url": {
+          "name": "video_asset_url",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "video_asset_fetched_at": {
+          "name": "video_asset_fetched_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "video_asset_error": {
+          "name": "video_asset_error",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "instagram_publish_status": {
+          "name": "instagram_publish_status",
+          "type": "platform_publish_status",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'not_started'"
+        },
+        "instagram_container_id": {
+          "name": "instagram_container_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "instagram_media_id": {
+          "name": "instagram_media_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "instagram_permalink": {
+          "name": "instagram_permalink",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "instagram_published_at": {
+          "name": "instagram_published_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "instagram_publish_error": {
+          "name": "instagram_publish_error",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "facebook_publish_status": {
+          "name": "facebook_publish_status",
+          "type": "platform_publish_status",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'not_started'"
+        },
+        "facebook_post_id": {
+          "name": "facebook_post_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "facebook_permalink": {
+          "name": "facebook_permalink",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "facebook_published_at": {
+          "name": "facebook_published_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "facebook_publish_error": {
+          "name": "facebook_publish_error",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "publish_attempted_at": {
+          "name": "publish_attempted_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "clips_twitch_clip_id_idx": {
+          "name": "clips_twitch_clip_id_idx",
+          "columns": [
+            {
+              "expression": "twitch_clip_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.publication_attempts": {
+      "name": "publication_attempts",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "clip_id": {
+          "name": "clip_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "publication_id": {
+          "name": "publication_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "trigger": {
+          "name": "trigger",
+          "type": "publication_trigger",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "status": {
+          "name": "status",
+          "type": "publication_attempt_status",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "scheduled_for": {
+          "name": "scheduled_for",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "authorized_at": {
+          "name": "authorized_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "authorized_caption": {
+          "name": "authorized_caption",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "authorized_instagram_user_id": {
+          "name": "authorized_instagram_user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "authorized_facebook_page_id": {
+          "name": "authorized_facebook_page_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "error": {
+          "name": "error",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "claim_token": {
+          "name": "claim_token",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "claimed_at": {
+          "name": "claimed_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "locked_until": {
+          "name": "locked_until",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "completed_at": {
+          "name": "completed_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "publication_attempts_due_idx": {
+          "name": "publication_attempts_due_idx",
+          "columns": [
+            {
+              "expression": "status",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "scheduled_for",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "publication_attempts_clip_history_idx": {
+          "name": "publication_attempts_clip_history_idx",
+          "columns": [
+            {
+              "expression": "clip_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "created_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "publication_attempts_one_active_clip_idx": {
+          "name": "publication_attempts_one_active_clip_idx",
+          "columns": [
+            {
+              "expression": "clip_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "where": "\"publication_attempts\".\"status\" in ('scheduled', 'processing', 'manual_review')",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "publication_attempts_clip_id_clips_id_fk": {
+          "name": "publication_attempts_clip_id_clips_id_fk",
+          "tableFrom": "publication_attempts",
+          "tableTo": "clips",
+          "columnsFrom": [
+            "clip_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "publication_attempts_publication_clip_fk": {
+          "name": "publication_attempts_publication_clip_fk",
+          "tableFrom": "publication_attempts",
+          "tableTo": "clip_publications",
+          "columnsFrom": [
+            "publication_id",
+            "clip_id"
+          ],
+          "columnsTo": [
+            "id",
+            "clip_id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "publication_attempts_scheduled_time_check": {
+          "name": "publication_attempts_scheduled_time_check",
+          "value": "(\"publication_attempts\".\"trigger\" = 'scheduled') = (\"publication_attempts\".\"scheduled_for\" IS NOT NULL)"
+        },
+        "publication_attempts_processing_claim_check": {
+          "name": "publication_attempts_processing_claim_check",
+          "value": "\"publication_attempts\".\"status\" <> 'processing' OR (\"publication_attempts\".\"claim_token\" IS NOT NULL AND \"publication_attempts\".\"claimed_at\" IS NOT NULL AND \"publication_attempts\".\"locked_until\" IS NOT NULL AND \"publication_attempts\".\"completed_at\" IS NULL)"
+        },
+        "publication_attempts_processing_lease_check": {
+          "name": "publication_attempts_processing_lease_check",
+          "value": "(\"publication_attempts\".\"status\" = 'processing') = (\"publication_attempts\".\"locked_until\" IS NOT NULL)"
+        },
+        "publication_attempts_scheduled_lifecycle_check": {
+          "name": "publication_attempts_scheduled_lifecycle_check",
+          "value": "\"publication_attempts\".\"status\" <> 'scheduled' OR (\"publication_attempts\".\"claim_token\" IS NULL AND \"publication_attempts\".\"claimed_at\" IS NULL AND \"publication_attempts\".\"locked_until\" IS NULL AND \"publication_attempts\".\"completed_at\" IS NULL)"
+        },
+        "publication_attempts_terminal_timestamp_check": {
+          "name": "publication_attempts_terminal_timestamp_check",
+          "value": "\"publication_attempts\".\"status\" NOT IN ('completed', 'failed', 'cancelled', 'manual_review') OR \"publication_attempts\".\"completed_at\" IS NOT NULL"
+        }
+      },
+      "isRLSEnabled": false
+    }
+  },
+  "enums": {
+    "public.blob_cleanup_status": {
+      "name": "blob_cleanup_status",
+      "schema": "public",
+      "values": [
+        "retained",
+        "processing",
+        "deleted",
+        "failed"
+      ]
+    },
+    "public.clip_status": {
+      "name": "clip_status",
+      "schema": "public",
+      "values": [
+        "discovered",
+        "shortlisted",
+        "approved",
+        "rejected",
+        "published"
+      ]
+    },
+    "public.instagram_collaboration_status": {
+      "name": "instagram_collaboration_status",
+      "schema": "public",
+      "values": [
+        "not_requested",
+        "pending",
+        "accepted"
+      ]
+    },
+    "public.platform_publish_status": {
+      "name": "platform_publish_status",
+      "schema": "public",
+      "values": [
+        "not_started",
+        "pending",
+        "published",
+        "failed",
+        "manual_review"
+      ]
+    },
+    "public.publication_attempt_status": {
+      "name": "publication_attempt_status",
+      "schema": "public",
+      "values": [
+        "scheduled",
+        "processing",
+        "completed",
+        "failed",
+        "cancelled",
+        "manual_review"
+      ]
+    },
+    "public.publication_trigger": {
+      "name": "publication_trigger",
+      "schema": "public",
+      "values": [
+        "immediate",
+        "scheduled"
+      ]
+    }
+  },
+  "schemas": {},
+  "sequences": {},
+  "roles": {},
+  "policies": {},
+  "views": {},
+  "_meta": {
+    "columns": {},
+    "schemas": {},
+    "tables": {}
+  }
+}
