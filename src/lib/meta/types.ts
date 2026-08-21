@@ -58,3 +58,23 @@ export interface FacebookVideoPermalinkResponse {
   permalink_url?: string;
   from?: { id?: string };
 }
+
+// -- Instagram: GET /{ig-media-id}/insights?metric=... --
+// -- Facebook: GET /{video-id}/video_insights?metric=... --
+// Meta's shared insights envelope: a list of named metrics, each carrying a
+// single current value. A metric this app requested but Meta has no data
+// for is simply absent from `data` — never returned with `value: 0`.
+export interface MetaInsightsResponse {
+  data?: Array<{
+    name: string;
+    values?: Array<{ value?: number }>;
+  }>;
+}
+
+// -- Facebook: GET /{video-id}?fields=reactions.summary(total_count),comments.summary(total_count),shares --
+export interface FacebookVideoEngagementResponse {
+  id: string;
+  reactions?: { summary?: { total_count?: number } };
+  comments?: { summary?: { total_count?: number } };
+  shares?: { count?: number };
+}

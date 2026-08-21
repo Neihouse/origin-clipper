@@ -74,4 +74,12 @@ export const config = {
       return value;
     },
   },
+  insights: {
+    get refreshWindowDays() {
+      return Number(process.env.INSIGHTS_REFRESH_WINDOW_DAYS ?? 14);
+    },
+    get batchSize() {
+      return Number(process.env.INSIGHTS_BATCH_SIZE ?? 20);
+    },
+  },
 };

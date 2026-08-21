@@ -20,6 +20,7 @@ import {
   publishClaimedClip,
   type PublishPlatformResult,
 } from "@/lib/publishing/core";
+import { refreshInsightsForClip } from "@/lib/publishing/insights";
 import { validateScheduleTime } from "@/lib/publishing/policy";
 import { getPublishingStateForClip } from "@/lib/publishing/queries";
 import {
@@ -388,6 +389,30 @@ export async function verifyPublishedClip(
       name: error instanceof Error ? error.name : typeof error,
     });
     return { status: "error", message: "Could not save publish verification." };
+  }
+}
+
+export async function refreshClipInsights(
+  prevState: ClipWorkflowActionState,
+  formData: FormData,
+): Promise<ClipWorkflowActionState> {
+  await requireSession();
+  try {
+    const id = requireId(formData);
+    const result = await refreshInsightsForClip(id);
+    revalidateClip(id);
+    if (result.instagram === "error" || result.facebook === "error") {
+      return {
+        status: "error",
+        message: "Insights refresh failed for at least one platform — see the error below.",
+      };
+    }
+    return { status: "ok", message: "Insights refreshed." };
+  } catch (error) {
+    console.error("Clip insights refresh failed:", {
+      name: error instanceof Error ? error.name : typeof error,
+    });
+    return { status: "error", message: "Could not refresh insights." };
   }
 }
 

@@ -256,6 +256,48 @@ export const publicationAttempts = pgTable(
   ],
 );
 
+/**
+ * One durable overwrite-on-fetch row per clip holding the latest Meta
+ * post-performance metrics. Not a time series — each refresh replaces the
+ * prior numbers for a platform, except on failure, where that platform's
+ * error column is written and its existing metrics/fetched-at are left
+ * untouched so a transient failure never wipes last-good data. A metric
+ * absent from Meta's response is stored as NULL, never 0.
+ */
+export const clipPublicationInsights = pgTable(
+  "clip_publication_insights",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    clipId: uuid("clip_id")
+      .notNull()
+      .references(() => clips.id, { onDelete: "cascade" }),
+
+    instagramInsightsFetchedAt: timestamp("instagram_insights_fetched_at", {
+      withTimezone: true,
+    }),
+    instagramViews: integer("instagram_views"),
+    instagramReach: integer("instagram_reach"),
+    instagramLikes: integer("instagram_likes"),
+    instagramComments: integer("instagram_comments"),
+    instagramShares: integer("instagram_shares"),
+    instagramSaved: integer("instagram_saved"),
+    instagramInsightsError: text("instagram_insights_error"),
+
+    facebookInsightsFetchedAt: timestamp("facebook_insights_fetched_at", {
+      withTimezone: true,
+    }),
+    facebookVideoViews: integer("facebook_video_views"),
+    facebookReactions: integer("facebook_reactions"),
+    facebookComments: integer("facebook_comments"),
+    facebookShares: integer("facebook_shares"),
+    facebookInsightsError: text("facebook_insights_error"),
+
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [uniqueIndex("clip_publication_insights_clip_id_unique").on(table.clipId)],
+);
+
 export type Clip = typeof clips.$inferSelect;
 export type NewClip = typeof clips.$inferInsert;
 export type ClipStatus = (typeof clipStatusEnum.enumValues)[number];
@@ -270,3 +312,5 @@ export type ClipPublication = typeof clipPublications.$inferSelect;
 export type NewClipPublication = typeof clipPublications.$inferInsert;
 export type PublicationAttempt = typeof publicationAttempts.$inferSelect;
 export type NewPublicationAttempt = typeof publicationAttempts.$inferInsert;
+export type ClipPublicationInsights = typeof clipPublicationInsights.$inferSelect;
+export type NewClipPublicationInsights = typeof clipPublicationInsights.$inferInsert;

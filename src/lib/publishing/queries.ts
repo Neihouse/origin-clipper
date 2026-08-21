@@ -1,6 +1,7 @@
-import { desc, inArray, sql } from "drizzle-orm";
+import { desc, eq, inArray, sql } from "drizzle-orm";
 import { getDb, type Db } from "@/db/client";
 import {
+  clipPublicationInsights,
   clipPublications,
   publicationAttempts,
   type ClipPublication,
@@ -168,6 +169,70 @@ export async function getPublicationAttemptHistory(
     .from(publicationAttempts)
     .where(inArray(publicationAttempts.clipId, [clipId]))
     .orderBy(desc(publicationAttempts.createdAt), desc(publicationAttempts.id));
+}
+
+export interface ClipInsightsState {
+  instagramInsightsFetchedAt: Date | null;
+  instagramViews: number | null;
+  instagramReach: number | null;
+  instagramLikes: number | null;
+  instagramComments: number | null;
+  instagramShares: number | null;
+  instagramSaved: number | null;
+  instagramInsightsError: string | null;
+  facebookInsightsFetchedAt: Date | null;
+  facebookVideoViews: number | null;
+  facebookReactions: number | null;
+  facebookComments: number | null;
+  facebookShares: number | null;
+  facebookInsightsError: string | null;
+}
+
+function emptyInsightsState(): ClipInsightsState {
+  return {
+    instagramInsightsFetchedAt: null,
+    instagramViews: null,
+    instagramReach: null,
+    instagramLikes: null,
+    instagramComments: null,
+    instagramShares: null,
+    instagramSaved: null,
+    instagramInsightsError: null,
+    facebookInsightsFetchedAt: null,
+    facebookVideoViews: null,
+    facebookReactions: null,
+    facebookComments: null,
+    facebookShares: null,
+    facebookInsightsError: null,
+  };
+}
+
+export async function getInsightsForClip(
+  clipId: string,
+  db: Db = getDb(),
+): Promise<ClipInsightsState> {
+  const [row] = await db
+    .select()
+    .from(clipPublicationInsights)
+    .where(eq(clipPublicationInsights.clipId, clipId))
+    .limit(1);
+  if (!row) return emptyInsightsState();
+  return {
+    instagramInsightsFetchedAt: row.instagramInsightsFetchedAt,
+    instagramViews: row.instagramViews,
+    instagramReach: row.instagramReach,
+    instagramLikes: row.instagramLikes,
+    instagramComments: row.instagramComments,
+    instagramShares: row.instagramShares,
+    instagramSaved: row.instagramSaved,
+    instagramInsightsError: row.instagramInsightsError,
+    facebookInsightsFetchedAt: row.facebookInsightsFetchedAt,
+    facebookVideoViews: row.facebookVideoViews,
+    facebookReactions: row.facebookReactions,
+    facebookComments: row.facebookComments,
+    facebookShares: row.facebookShares,
+    facebookInsightsError: row.facebookInsightsError,
+  };
 }
 
 export interface CadencePublishingRow {

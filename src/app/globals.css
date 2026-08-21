@@ -1218,6 +1218,44 @@ button {
   margin: 0;
 }
 
+.insights-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.insights-panel-platforms {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 14px;
+}
+
+.insights-platform h4 {
+  margin: 0 0 6px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.insights-metric-grid {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 4px 10px;
+  margin: 0;
+  font-size: 13px;
+}
+
+.insights-metric {
+  display: contents;
+}
+
+.insights-metric dt {
+  color: var(--text-muted);
+}
+
+.insights-metric dd {
+  margin: 0;
+}
+
 .notes-form {
   display: flex;
   flex-direction: column;

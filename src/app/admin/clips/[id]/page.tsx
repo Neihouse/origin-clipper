@@ -4,8 +4,9 @@ import { eq } from "drizzle-orm";
 import { getDb } from "@/db/client";
 import { clips } from "@/db/schema";
 import { requireSession } from "@/lib/auth/require-session";
-import { getPublishingStateForClip } from "@/lib/publishing/queries";
+import { getInsightsForClip, getPublishingStateForClip } from "@/lib/publishing/queries";
 import { approveClip, rejectClip } from "../actions";
+import { InsightsPanel } from "../InsightsPanel";
 import { PublishingChecklist } from "../PublishingChecklist";
 import { PublishButton } from "../PublishButton";
 import { ScheduleControls } from "../ScheduleControls";
@@ -38,9 +39,10 @@ export default async function ClipDetailPage({ params }: PageProps) {
   const { id } = await params;
 
   const db = getDb();
-  const [[clip], publishing] = await Promise.all([
+  const [[clip], publishing, insights] = await Promise.all([
     db.select().from(clips).where(eq(clips.id, id)).limit(1),
     getPublishingStateForClip(id, db),
+    getInsightsForClip(id, db),
   ]);
   if (!clip) notFound();
 
@@ -226,6 +228,16 @@ export default async function ClipDetailPage({ params }: PageProps) {
           scheduleStatus={publishing.scheduleStatus}
           cleanupStatus={publishing.blobCleanupStatus}
           cleanupError={publishing.blobCleanupError}
+        />
+      </section>
+
+      <section className="detail-section">
+        <h2>Insights</h2>
+        <InsightsPanel
+          clipId={clip.id}
+          instagramStatus={publishing.instagramPublishStatus}
+          facebookStatus={publishing.facebookPublishStatus}
+          insights={insights}
         />
       </section>
     </main>

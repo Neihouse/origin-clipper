@@ -14,6 +14,7 @@ describe("schedule action authentication", () => {
     const {
       cancelScheduledPublish,
       publishClip,
+      refreshClipInsights,
       resolvePlatformPublishReview,
       resolveSchedulePublishReview,
       rescheduleClip,
@@ -40,7 +41,10 @@ describe("schedule action authentication", () => {
       "Unauthenticated",
     );
     await expect(publishClip({ status: "idle" }, empty)).rejects.toThrow("Unauthenticated");
-    expect(requireSession).toHaveBeenCalledTimes(8);
+    await expect(refreshClipInsights({ status: "idle" }, empty)).rejects.toThrow(
+      "Unauthenticated",
+    );
+    expect(requireSession).toHaveBeenCalledTimes(9);
   });
 
   it("rejects untrusted manual-review evidence before touching the database", async () => {

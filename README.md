@@ -195,6 +195,14 @@ Page is the target for both platforms. After Instagram publishes, an operator ma
 As with the Twitch client secret, treat `META_PAGE_ACCESS_TOKEN` as a real secret — anyone
 with it can post to the Page and its linked Instagram account.
 
+**Post-publish insights** (views, likes, comments, etc. on already-published posts) reuse this
+same `META_PAGE_ACCESS_TOKEN` — no new secret. They do need their own read permissions on the
+token, though: confirm `pages_read_engagement` (already requested above) actually covers Page
+video insights, and separately request/confirm `instagram_manage_insights` for Instagram Reels
+insights (exact current name TBD — check Meta's dashboard, as with the publish permissions
+above). If these read permissions aren't granted, the insights refresh simply records a
+per-platform fetch error and leaves the rest of the app, including publishing, unaffected.
+
 ## Environment variables
 
 All variables are documented with generation hints in [`.env.example`](.env.example). Summary:
@@ -213,6 +221,8 @@ All variables are documented with generation hints in [`.env.example`](.env.exam
 | `META_IG_USER_ID` | Instagram Business Account ID linked to that Page. |
 | `META_PAGE_ACCESS_TOKEN` | Long-lived Page access token from a Business Manager System User. |
 | `META_GRAPH_API_VERSION` | Graph API version to call. Defaults to `v21.0`. |
+| `INSIGHTS_REFRESH_WINDOW_DAYS` | Only clips published within this many days are refreshed by the insights cron sweep. Defaults to `14`. |
+| `INSIGHTS_BATCH_SIZE` | Max clips the insights cron sweep refreshes per invocation. Defaults to `20`. |
 | `BLOB_READ_WRITE_TOKEN` | Vercel Blob read/write token, used to re-host clip video before publishing to Meta. |
 | `VIDEO_ASSET_RETENTION_DAYS` | Days to retain a verified post's temporary Blob asset before cleanup. Integer `1`–`30`; defaults to `7`. |
 
@@ -243,13 +253,17 @@ change — it only touches `src/lib/auth/*` and `src/proxy.ts`.
 
 ## Cron behavior
 
-`vercel.json` schedules three authenticated jobs:
+`vercel.json` schedules four authenticated jobs:
 
 - `/api/cron/collect-clips` at `0 15 * * 6` — **15:00 UTC every Saturday**.
 - `/api/cron/publish-scheduled` at `*/15 * * * *` — every 15 minutes, to claim due,
   explicitly authorized publishes.
 - `/api/cron/cleanup-assets` at `17 11 * * *` — **11:17 UTC daily**, to remove eligible
   temporary Blob assets after the configured retention period.
+- `/api/cron/refresh-insights` at `0 */6 * * *` — every 6 hours, to pull fresh
+  view/like/comment/share metrics for clips published within `INSIGHTS_REFRESH_WINDOW_DAYS`,
+  staleness-first, up to `INSIGHTS_BATCH_SIZE` per run. A per-platform fetch failure records
+  only that platform's error and leaves its last-good numbers in place.
 
 Vercel Cron schedules are UTC-only and have no daylight-saving awareness. 15:00 UTC is
 7:00 AM Pacific during PDT (spring–fall) and 8:00 AM Pacific during PST (winter) — i.e. it
@@ -258,7 +272,7 @@ by an hour twice a year. If tighter precision is ever needed, that requires eith
 timezone-aware scheduler outside Vercel Cron or manually adjusting the cron expression twice a
 year — not implemented here as it's unnecessary for a weekly marketing job.
 
-All three routes reject requests whose `Authorization` header does not match
+All four routes reject requests whose `Authorization` header does not match
 `Bearer $CRON_SECRET`, so they are safe to expose as cron endpoints. Vercel sends that header
 for scheduled invocations, and it should never be shared elsewhere. The chosen publish time
 is an eligibility boundary, not an exact delivery guarantee: the worker normally starts it on
@@ -318,9 +332,9 @@ an error) once it finishes.
    ```bash
    DATABASE_URL="<production connection string>" npm run db:migrate
    ```
-5. Deploy. `vercel.json` declares the collection, due-publish, and verified-asset-cleanup crons —
-   no extra dashboard configuration is needed, but confirm all three appear under the project's
-   Cron Jobs tab after the first deploy.
+5. Deploy. `vercel.json` declares the collection, due-publish, verified-asset-cleanup, and
+   insights-refresh crons — no extra dashboard configuration is needed, but confirm all four
+   appear under the project's Cron Jobs tab after the first deploy.
 6. Visit `/login` on the deployed URL and sign in with the password behind
    `ADMIN_PASSWORD_HASH`.
 

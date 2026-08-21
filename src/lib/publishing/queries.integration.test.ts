@@ -6,6 +6,7 @@ import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import { type Db } from "@/db/client";
 import * as schema from "@/db/schema";
 import {
+  clipPublicationInsights,
   clipPublications,
   clips,
   publicationAttempts,
@@ -15,7 +16,7 @@ import {
   type PublicationAttemptStatus,
   type PublicationTrigger,
 } from "@/db/schema";
-import { getCadencePublishingDashboard } from "./queries";
+import { getCadencePublishingDashboard, getInsightsForClip } from "./queries";
 
 function requireTestDatabaseUrl(): string {
   const value = process.env.TEST_DATABASE_URL?.trim();
@@ -411,5 +412,54 @@ describe("getCadencePublishingDashboard", () => {
     expect(row?.publishing.publicationId).toBe(publicationId);
     expect(row?.publishing.instagramPublishStatus).toBe("failed");
     expect(row?.publishing.scheduleStatus).toBe("failed");
+  });
+});
+
+describe("getInsightsForClip", () => {
+  it("returns an all-null empty state when the clip has no insights row yet", async () => {
+    const clipId = await createClip("insights-empty", "published");
+
+    const insights = await getInsightsForClip(clipId, db);
+
+    expect(insights).toEqual({
+      instagramInsightsFetchedAt: null,
+      instagramViews: null,
+      instagramReach: null,
+      instagramLikes: null,
+      instagramComments: null,
+      instagramShares: null,
+      instagramSaved: null,
+      instagramInsightsError: null,
+      facebookInsightsFetchedAt: null,
+      facebookVideoViews: null,
+      facebookReactions: null,
+      facebookComments: null,
+      facebookShares: null,
+      facebookInsightsError: null,
+    });
+  });
+
+  it("returns the stored metrics for a clip with an insights row", async () => {
+    const clipId = await createClip("insights-populated", "published");
+    const fetchedAt = new Date("2026-08-15T00:00:00.000Z");
+    await db.insert(clipPublicationInsights).values({
+      clipId,
+      instagramInsightsFetchedAt: fetchedAt,
+      instagramViews: 42,
+      instagramReach: 30,
+      instagramLikes: null,
+      facebookInsightsError: "Meta rejected the insights request (code 100).",
+    });
+
+    const insights = await getInsightsForClip(clipId, db);
+
+    expect(insights.instagramInsightsFetchedAt?.toISOString()).toBe(fetchedAt.toISOString());
+    expect(insights.instagramViews).toBe(42);
+    expect(insights.instagramReach).toBe(30);
+    expect(insights.instagramLikes).toBeNull();
+    expect(insights.facebookInsightsError).toBe(
+      "Meta rejected the insights request (code 100).",
+    );
+    expect(insights.facebookVideoViews).toBeNull();
   });
 });
