@@ -40,6 +40,11 @@ export const config = {
       return required("SESSION_SECRET");
     },
   },
+  status: {
+    get apiKey() {
+      return required("STATUS_API_KEY");
+    },
+  },
   collection: {
     get windowDays() {
       return Number(process.env.COLLECTION_WINDOW_DAYS ?? 7);
